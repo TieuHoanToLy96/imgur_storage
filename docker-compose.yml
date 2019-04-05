@@ -1,0 +1,36 @@
+version: "3"
+services:
+  phoenix:
+    container_name: imgur-storage
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      PG_USERNAME: postgres
+      PG_PASSWORD: postgres
+      PG_HOST: imgur-storage-postgres
+    env_file: .dev.env
+    ports:
+      - "8001:4000"
+    volumes:
+      - .:/app
+    links:
+      - imgur-storage-postgres
+    depends_on:
+      - imgur-storage-postgres
+  imgur-storage-postgres:
+    image: postgres:9.6.5-alpine
+    container_name: imgur-storage-postgres
+    ports:
+      - "5440:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: imgur_storage_dev
+      PGDATA: /data/pgdata
+    volumes:
+      - ./data:/data:cached
+networks:
+  shared_network:
+    external:
+      name: imgur_network
