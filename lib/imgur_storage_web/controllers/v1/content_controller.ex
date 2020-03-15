@@ -62,6 +62,8 @@ defmodule ImgurStorageWeb.V1.ContentController do
         do: "https://storage.tieuhoan.dev#{path_file}",
         else: "http://locallhost:8200#{path_file}"
 
+    path_content = "https://storage.tieuhoan.dev#{path_file}"
+
     info = %{
       id: file_binary_hash,
       name: file_name,
@@ -95,8 +97,6 @@ defmodule ImgurStorageWeb.V1.ContentController do
         end
 
       {:ok, content} ->
-        IO.inspect(content, label: "aaaa")
-
         case Contents.update_content(content, info) do
           {:ok, content} ->
             file = ContentView.render("content_just_loaded.json", content)
