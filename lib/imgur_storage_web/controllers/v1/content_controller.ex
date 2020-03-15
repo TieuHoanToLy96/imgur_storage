@@ -9,7 +9,7 @@ defmodule ImgurStorageWeb.V1.ContentController do
   @path_origin File.cwd!()
   def get_file(conn, params) do
     case params["file"] |> String.split(".") do
-      [filename, extension] ->
+      [_filename, _extension] ->
         path =
           [params["year"], params["month"], params["date"], params["file"]]
           |> Enum.join("/")
@@ -57,12 +57,17 @@ defmodule ImgurStorageWeb.V1.ContentController do
     path_folder = "#{@path_origin}/upload/#{folder_name}"
     path_file = "#{path_folder}/#{file_name}.#{file_extension}"
 
+    path_content =
+      if System.get_env("MIX_ENV") == "prod",
+        do: "https://storage.tieuhoan.dev#{path_file}",
+        else: "http://locallhost:8200#{path_file}"
+
     info = %{
       id: file_binary_hash,
       name: file_name,
       extension: file_extension,
       size: file_size,
-      path: path_file
+      path: path_content
     }
 
     case Contents.get_content_by_id(file_binary_hash) do
@@ -90,9 +95,17 @@ defmodule ImgurStorageWeb.V1.ContentController do
         end
 
       {:ok, content} ->
-        file = ContentView.render("content_just_loaded,json", content)
+        IO.inspect(content, label: "aaaa")
 
-        {:success, :with_data, file, "Upload file success"}
+        case Contents.update_content(content, info) do
+          {:ok, content} ->
+            file = ContentView.render("content_just_loaded.json", content)
+
+            {:success, :with_data, file, "Upload file success"}
+
+          {:error, reason} ->
+            {:falied, :success_false_with_reason, reason}
+        end
     end
   end
 end

@@ -9,6 +9,10 @@ defmodule ImgurStorage.Contents.Contents do
     |> Repo.insert()
   end
 
+  def update_content(struct, attrs) do
+    struct |> Content.changeset(attrs) |> Repo.update()
+  end
+
   def get_content_by_id(file_hash) do
     query = from(c in Content, where: c.id == ^file_hash)
     result = Repo.all(query) |> List.first()
