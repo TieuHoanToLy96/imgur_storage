@@ -165,8 +165,6 @@ defmodule ImgurStorageWeb.V1.ContentController do
         end
 
       {:ok, content} ->
-        IO.inspect(content, label: "aaaa")
-
         case Contents.update_content(content, info) do
           {:ok, content} ->
             file = ContentView.render("content_just_loaded.json", content)
