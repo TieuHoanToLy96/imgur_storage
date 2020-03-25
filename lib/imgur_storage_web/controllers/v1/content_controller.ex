@@ -25,6 +25,74 @@ defmodule ImgurStorageWeb.V1.ContentController do
     end
   end
 
+  def upload_contents_from_urls(list) do
+    Enum.with_index(list)
+    |> Enum.map(fn {url, index} ->
+      upload_content_from_url(url, "avatar-image-#{index}")
+    end)
+    |> IO.inspect(label: "aaaa", limit: :infinity)
+  end
+
+  def upload_content_from_url(url, file_name) do
+    date_now = Date.utc_today()
+    year = date_now.year
+    month = date_now.month
+    day = date_now.day
+    folder_name = "#{year}/#{month}/#{day}"
+
+    %HTTPoison.Response{body: file_binary} = HTTPoison.get!(url)
+    path_folder = "#{@path_origin}/upload/#{folder_name}"
+    file_binary_hash = Tools.hash(file_binary)
+    path_file = "#{path_folder}/#{file_name}.png"
+
+    path_content =
+      if System.get_env("MIX_ENV") == "prod",
+        do: "https://storage.tieuhoan.dev#{path_file}",
+        else: "http://locallhost:8200#{path_file}"
+
+    path_content = "https://storage.tieuhoan.dev#{path_file}"
+
+    info = %{
+      id: file_binary_hash,
+      name: file_name,
+      extension: "png",
+      size: 0,
+      path: path_content
+    }
+
+    case Contents.get_content_by_id(file_binary_hash) do
+      {:error, :entity_not_existed} ->
+        case File.mkdir_p(path_folder) do
+          :ok ->
+            case File.write(path_file, file_binary) do
+              :ok ->
+                case Contents.create_content(info) do
+                  {:ok, content} ->
+                    path_content
+
+                  {:error, reason} ->
+                    {:error}
+                end
+
+              {:error, reason} ->
+                {:error}
+            end
+
+          {:error, _} ->
+            {:error}
+        end
+
+      {:ok, content} ->
+        case Contents.update_content(content, info) do
+          {:ok, content} ->
+            path_content
+
+          {:error, reason} ->
+            {:falied, :success_false_with_reason, reason}
+        end
+    end
+  end
+
   def upload_content(conn, _params) do
     req_headers = conn.req_headers
     {:ok, file_binary, _} = read_body(conn)
@@ -61,6 +129,8 @@ defmodule ImgurStorageWeb.V1.ContentController do
       if System.get_env("MIX_ENV") == "prod",
         do: "https://storage.tieuhoan.dev#{path_file}",
         else: "http://locallhost:8200#{path_file}"
+
+    path_content = "https://storage.tieuhoan.dev#{path_file}"
 
     info = %{
       id: file_binary_hash,
