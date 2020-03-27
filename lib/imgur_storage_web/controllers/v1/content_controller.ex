@@ -7,28 +7,39 @@ defmodule ImgurStorageWeb.V1.ContentController do
   action_fallback(ImgurStorageWeb.FallbackController)
 
   @path_origin File.cwd!()
+  def get_file(conn, %{"one" => one, "two" => two, "three" => three, "four" => four} = params) do
+    path =
+      [one, two, three, four, params["file"]]
+      |> Enum.join("/")
+
+    path_file = "#{@path_origin}/upload/#{path}"
+
+    case File.read(path_file) do
+      {:ok, binary} ->
+        conn
+        |> put_resp_header("cache-control", "public, max-age=31557600")
+        |> send_resp(200, binary)
+    end
+  end
+
   def get_file(conn, params) do
-    case params["file"] |> String.split(".") do
-      [_filename, _extension] ->
-        path =
-          [params["year"], params["month"], params["date"], params["file"]]
-          |> Enum.join("/")
+    path =
+      [params["year"], params["month"], params["date"], params["file"]]
+      |> Enum.join("/")
 
-        path_file = "#{@path_origin}/upload/#{path}"
+    path_file = "#{@path_origin}/upload/#{path}"
 
-        case File.read(path_file) do
-          {:ok, binary} ->
-            conn
-            |> put_resp_header("cache-control", "public, max-age=31557600")
-            |> send_resp(200, binary)
-        end
+    case File.read(path_file) do
+      {:ok, binary} ->
+        conn
+        |> put_resp_header("cache-control", "public, max-age=31557600")
+        |> send_resp(200, binary)
     end
   end
 
   def upload_content(conn, _params) do
     req_headers = conn.req_headers
     {:ok, file_binary, _} = read_body(conn)
-    date_now = Date.utc_today()
 
     %{
       "host" => _host,
@@ -49,10 +60,9 @@ defmodule ImgurStorageWeb.V1.ContentController do
     #       |> Enum.map(fn el -> Enum.join(el) end)
     #       |> Enum.join("/")
 
-    year = date_now.year
-    month = date_now.month
-    day = date_now.day
-    folder_name = "#{year}/#{month}/#{day}"
+    hash_chunks = for <<x::binary-2 <- file_binary_hash>>, do: x
+    [one, two, three, four | rest] = hash_chunks
+    folder_name = [one, two, three, four] |> Enum.join("/")
 
     path_folder = "#{@path_origin}/upload/#{folder_name}"
     path_file = "#{path_folder}/#{file_name}.#{file_extension}"
@@ -60,9 +70,9 @@ defmodule ImgurStorageWeb.V1.ContentController do
     path_content =
       if System.get_env("MIX_ENV") == "prod",
         do: "https://storage.tieuhoan.dev#{path_file}",
-        else: "http://locallhost:8200#{path_file}"
+        else: "http://localhost:8200#{path_file}"
 
-    path_content = "https://storage.tieuhoan.dev#{path_file}"
+    # path_content = "https://storage.tieuhoan.dev#{path_file}"
 
     info = %{
       id: file_binary_hash,

@@ -15,7 +15,8 @@ defmodule ImgurStorageWeb.Router do
   end
 
   scope "/", ImgurStorageWeb.V1 do
+    get("/root/imgur_storage/upload/:one/:two/:three/:four/:file", ContentController, :get_file)
     get("/root/imgur_storage/upload/:year/:month/:date/:file", ContentController, :get_file)
-    get("/app/upload/:year/:month/:date/:file", ContentController, :get_file)
+    get("/app/upload/:one/:two/:three/:four/:file", ContentController, :get_file)
   end
 end
