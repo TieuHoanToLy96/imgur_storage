@@ -40,7 +40,8 @@ defmodule ImgurStorage.Mixfile do
       {:gettext, "~> 0.11"},
       {:httpoison, "~> 1.0"},
       {:cowboy, "~> 1.0"},
-      {:plug_cowboy, "~> 1.0"}
+      {:plug_cowboy, "~> 1.0"},
+      {:jason, "~> 1.2"}
     ]
   end
 

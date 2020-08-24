@@ -7,6 +7,18 @@ defmodule ImgurStorageWeb.V1.ContentController do
   action_fallback(ImgurStorageWeb.FallbackController)
 
   @path_origin File.cwd!()
+
+  def get_static(conn, %{"file" => file}) do
+    path_file = "#{@path_origin}/priv/static/#{file}"
+
+    case File.read(path_file) do
+      {:ok, binary} ->
+        conn
+        |> put_resp_header("cache-control", "public, max-age=31557600")
+        |> send_resp(200, binary)
+    end
+  end
+
   def get_file(conn, %{"one" => one, "two" => two, "three" => three, "four" => four} = params) do
     path =
       [one, two, three, four, params["file"]]
@@ -105,7 +117,7 @@ defmodule ImgurStorageWeb.V1.ContentController do
     end
   end
 
-  def upload_content(conn, _params) do
+  def upload_content(conn, params) do
     req_headers = conn.req_headers
     {:ok, file_binary, _} = read_body(conn)
 
@@ -121,13 +133,6 @@ defmodule ImgurStorageWeb.V1.ContentController do
       end)
 
     file_binary_hash = Tools.hash(file_binary)
-
-    #     folder_name =
-    #       String.codepoints(file_binary_hash)
-    #       |> Enum.chunk(16)
-    #       |> Enum.map(fn el -> Enum.join(el) end)
-    #       |> Enum.join("/")
-
     hash_chunks = for <<x::binary-2 <- file_binary_hash>>, do: x
     [one, two, three, four | rest] = hash_chunks
     folder_name = [one, two, three, four] |> Enum.join("/")
@@ -149,6 +154,58 @@ defmodule ImgurStorageWeb.V1.ContentController do
       size: file_size,
       path: path_content
     }
+
+    # "http://localhost:8200/app/upload/35/a5/25/86/maxresdefault.jpg"
+    watermark_link = params["watermark_link"] || ""
+
+    IO.inspect(watermark_link, label: "oooooooo")
+    wsx = params["watermark_size_x"] || "0"
+    wsy = params["watermark_size_y"] || "0"
+    wo = params["watermark_opacity"] || "1"
+    wpb = params["watermark_padding_bottom"] || "0"
+    wpr = params["watermark_padding_right"] || "0"
+
+    watermark_host =
+      if System.get_env("MIX_ENV") == "prod", do: "localhost", else: "asset-service"
+
+    watermark_port = "9090"
+
+    file_binary =
+      if !Tools.is_empty?(watermark_host) && !Tools.str_to_bool(params["is_watermark"]) do
+        list = String.split(watermark_link, "/")
+        path = Enum.slice(list, length(list) - 5, length(list)) |> Enum.join("/")
+
+        IO.inspect("#{@path_origin}/upload/#{path}", label: "ddddddd")
+
+        case File.read("#{@path_origin}/upload/#{path}") |> IO.inspect(label: "11111") do
+          {:ok, bin} ->
+            url =
+              "http://#{watermark_host}:#{watermark_port}/api/v1/watermark/watermark?from_bottom=true&wpb=#{
+                wpb
+              }&wpr=#{wpr}&opacity=#{wo}&wsx=#{wsx}&wsy=#{wsy}"
+
+            IO.inspect(url, label: "lllll")
+
+            case HTTPoison.post(
+                   url,
+                   Jason.encode!(%{origin: Base.encode64(file_binary), logo: Base.encode64(bin)}),
+                   []
+                 )
+                 |> IO.inspect(label: "xxxx") do
+              {:ok, %HTTPoison.Response{body: with_watermark}} ->
+                with_watermark
+
+              _ ->
+                file_binary
+            end
+
+          _ ->
+            file_binary
+        end
+      else
+        IO.inspect(label: "22222")
+        file_binary
+      end
 
     case Contents.get_content_by_id(file_binary_hash) do
       {:error, :entity_not_existed} ->
