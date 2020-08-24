@@ -19,7 +19,7 @@ defmodule ImgurStorageWeb.Router do
     get("/root/imgur_storage/upload/:year/:month/:date/:file", ContentController, :get_file)
     get("/app/upload/:one/:two/:three/:four/:file", ContentController, :get_file)
 
-    get("/root/imgur_storage/priv/static/:file", ContentController, :get_file)
+    get("/root/imgur_storage/priv/static/:file", ContentController, :get_static)
     get("/app/priv/static/:file", ContentController, :get_static)
   end
 end
